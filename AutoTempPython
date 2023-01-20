@@ -1,0 +1,104 @@
+import numpy as np
+
+# Define membership functions for skin temperature, outside temperature, 
+# skin temperature rate of change, and outside temperature rate of change
+skinTempMF = {"cold": {"type": "trapmf", "params": [32, 32, 68, 77]}, 
+              "comfortable": {"type": "trimf", "params": [68, 77, 86]}, 
+              "hot": {"type": "trapmf", "params": [77, 86, 104, 104]}}
+
+outsideTempMF = {"cold": {"type": "trapmf", "params": [-4, -4, 32, 50]}, 
+                 "comfortable": {"type": "trimf", "params": [32, 50, 68]}, 
+                 "hot": {"type": "trapmf", "params": [50, 68, 104, 104]}}
+
+skinTempRateMF = {"cooling": {"type": "trapmf", "params": [-10, -10, -5, -2]}, 
+                  "stable": {"type": "trimf", "params": [-5, -2, 2]}, 
+                  "heating": {"type": "trapmf", "params": [2, 5, 10, 10]}}
+
+outsideTempRateMF = {"cooling": {"type": "trapmf", "params": [-10, -10, -5, -2]}, 
+                     "stable": {"type": "trimf", "params": [-5, -2, 2]}, 
+                     "heating": {"type": "trapmf", "params": [2, 5, 10, 10]}}
+
+# Define membership functions for HVAC power output
+HVACPowerMF = {"low": {"type": "trapmf", "params": [0, 0, 0.25, 0.5]}, 
+               "medium": {"type": "trimf", "params": [0.25, 0.5, 0.75]}, 
+               "high": {"type": "trapmf", "params": [0.5, 0.75, 1, 1]}}
+
+# Define the rulebase
+ruleList = [[1, 1, 1, 1, 1], [2, 2, 2, 2, 2], [3, 3, 3, 3, 3], [4, 4, 4, 4, 4], 
+            [5, 5, 5, 5, 5], [6, 6, 6, 6, 6], [7, 7, 7, 7, 7], [8, 8, 8, 8, 8], 
+            [9, 9, 9, 9, 9], [10, 10, 10, 10, 10]]
+
+# Define the inputs
+# Inputs are defined in Fahrenheit.
+skinTemp = 77 # Example user skin temperature
+outsideTemp = 59 # Example outside temperature
+skinTempRate = 2 # Example rate of change for user skin temperature
+outsideTempRate = -2 # Example rate of change for outside temperature
+
+def bayesianEstimator(mf, value):
+    mf_type = mf["type"]
+    mf_params = mf["params"]
+    if mf_type == "trapmf":
+        a, b, c, d = mf_params
+        mf["params"] = [a+(value-a)/3, b+(value-b)/3, c+(value-c)/3, d+(value-d)/3]
+    elif mf_type == "trimf":
+        a, b, c = mf_params
+        mf["params"] = [a+(value-a)/3, b+(value-b)/3, c+(value-c)/3]
+    return mf
+
+skinTempMF["cold"] = bayesianEstimator(skinTempMF["cold"], skinTemp)
+outsideTempMF["comfortable"] = bayesianEstimator(outsideTempMF["comfortable"], outsideTemp)
+
+# Define the fuzzy inference system
+def evalfis(inputs, mfs, rules):
+    # Define the membership functions for each input
+    skinTempMF_values = {"cold": mf_value(skinTempMF["cold"], inputs[0]),
+                         "comfortable": mf_value(skinTempMF["comfortable"], inputs[0]),
+                         "hot": mf_value(skinTempMF["hot"], inputs[0])}
+    outsideTempMF_values = {"cold": mf_value(outsideTempMF["cold"], inputs[1]),
+                            "comfortable": mf_value(outsideTempMF["comfortable"], inputs[1]),
+                            "hot": mf_value(outsideTempMF["hot"], inputs[1])}
+    skinTempRateMF_values = {"cooling": mf_value(skinTempRateMF["cooling"], inputs[2]),
+                             "stable": mf_value(skinTempRateMF["stable"], inputs[2]),
+                             "heating": mf_value(skinTempRateMF["heating"], inputs[2])}
+    outsideTempRateMF_values = {"cooling": mf_value(outsideTempRateMF["cooling"], inputs[3]),
+                                "stable": mf_value(outsideTempRateMF["stable"], inputs[3]),
+                                "heating": mf_value(outsideTempRateMF["heating"], inputs[3])}
+
+        # Define the fuzzy output
+    HVACPowerMF_values = {"low": 0, "medium": 0, "high": 0}
+    for rule in rules:
+        skinTemp_value = skinTempMF_values[list(skinTempMF.keys())[rule[0]-1]]
+        outsideTemp_value = outsideTempMF_values[list(outsideTempMF.keys())[rule[1]-1]]
+        skinTempRate_value = skinTempRateMF_values[list(skinTempRateMF.keys())[rule[2]-1]]
+        outsideTempRate_value = outsideTempRateMF_values[list(outsideTempRateMF.keys())[rule[3]-1]]
+        HVACPower_index = rule[4]-1
+        HVACPowerMF_values[list(HVACPowerMF.keys())[HVACPower_index]] = max(HVACPowerMF_values[list(HVACPowerMF.keys())[HVACPower_index]], min(skinTemp_value, outsideTemp_value, skinTempRate_value, outsideTempRate_value))
+
+      def evalfis(inputs, mfs, rules):
+    # Define the membership functions for each input
+    skinTempMF_values = {"cold": mf_value(skinTempMF["cold"], inputs[0]),
+                         "comfortable": mf_value(skinTempMF["comfortable"], inputs[0]),
+                         "hot": mf_value(skinTempMF["hot"], inputs[0])}
+    # Define the defuzzified output
+    HVACPower = 0
+    num = 0
+    den = 0
+    for output in HVACPowerMF:
+        mf = HVACPowerMF[output]
+        if mf["type"] == "trapmf":
+            a, b, c, d = mf["params"]
+            num += HVACPowerMF_values[output] * (b + c) / 2
+            den += HVACPowerMF_values[output] * (c - b)
+        elif mf["type"] == "trimf":
+            a, b, c = mf["params"]
+            num += HVACPowerMF_values[output] * b
+            den += HVACPowerMF_values[output] * (c - a)
+    if den != 0:
+        HVACPower = num / den
+    return HVACPower
+
+HVACPower = evalfis([skinTemp, outsideTemp, skinTempRate, outsideTempRate],
+                    [skinTempMF, outsideTempMF, skinTempRateMF, outsideTempRateMF],
+                    ruleList)
+  
