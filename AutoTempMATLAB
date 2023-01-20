@@ -1,0 +1,57 @@
+% Define membership functions for skin temperature, outside temperature, 
+% skin temperature rate of change, and outside temperature rate of change
+skinTempMF = newfis('skinTempMF');
+skinTempMF = addvar(skinTempMF,'input','Skin Temperature',[32 104]);
+skinTempMF = addmf(skinTempMF,'input',1,'cold','trapmf',[32 32 68 77]);
+skinTempMF = addmf(skinTempMF,'input',1,'comfortable','trimf',[68 77 86]);
+skinTempMF = addmf(skinTempMF,'input',1,'hot','trapmf',[77 86 104 104]);
+
+outsideTempMF = newfis('outsideTempMF');
+outsideTempMF = addvar(outsideTempMF,'input','Outside Temperature',[-4 104]);
+outsideTempMF = addmf(outsideTempMF,'input',1,'cold','trapmf',[-4 -4 32 50]);
+outsideTempMF = addmf(outsideTempMF,'input',1,'comfortable','trimf',[32 50 68]);
+outsideTempMF = addmf(outsideTempMF,'input',1,'hot','trapmf',[50 68 104 104]);
+
+skinTempRateMF = newfis('skinTempRateMF');
+skinTempRateMF = addvar(skinTempRateMF,'input','Skin Temperature Rate of Change', [-10 10]);
+skinTempRateMF = addmf(skinTempRateMF,'input',1,'cooling','trapmf', [-10 -10 -5 -2]);
+skinTempRateMF = addmf(skinTempRateMF,'input',1,'stable','trimf', [-5 -2 2]);
+
+skinTempRateMF = addmf(skinTempRateMF,'input',1,'heating','trapmf', [2 5 10 10]);
+
+outsideTempRateMF = newfis('outsideTempRateMF');
+outsideTempRateMF = addvar(outsideTempRateMF,'input','Outside Temperature Rate of Change', [-10 10]);
+outsideTempRateMF = addmf(outsideTempRateMF,'input',1,'cooling','trapmf', [-10 -10 -5 -2]);
+outsideTempRateMF = addmf(outsideTempRateMF,'input',1,'stable','trimf', [-5 -2 2]);
+outsideTempRateMF = addmf(outsideTempRateMF,'input',1,'heating','trapmf', [2 5 10 10]);
+
+% Define membership functions for HVAC power output
+HVACPowerMF = newfis('HVACPowerMF');
+HVACPowerMF = addvar(HVACPowerMF,'output','HVAC Power Output', [0 1]);
+HVACPowerMF = addmf(HVACPowerMF,'output',1,'low','trapmf', [0 0 0.25 0.5]);
+HVACPowerMF = addmf(HVACPowerMF,'output',1,'medium','trimf', [0.25 0.5 0.75]);
+HVACPowerMF = addmf(HVACPowerMF,'output',1,'high','trapmf', [0.5 0.75 1 1]);
+
+% Define the rulebase
+ruleList = [1 1 1 1 1; 2 2 2 2 2; 3 3 3 3 3; 4 4 4 4 4; 5 5 5 5 5; 6 6 6 6 6; 7 7 7 7 7; 8 8 8 8 8; 9 9 9 9 9; 10 10 10 10 10];
+
+HVACPowerMF = addrule(HVACPowerMF,ruleList);
+
+% Define the inputs
+% Inputs are defined in Fahrenheit.
+skinTemp = 77; % Example user skin temperature
+outsideTemp = 59; % Example outside temperature
+skinTempRate = 2; % Example rate of change for user skin temperature
+outsideTempRate = -2; % Example rate of change for outside temperature
+
+% Update the membership function parameters using the Bayesian estimator
+bayesianEstimator(skinTempMF.input(1).mf(1), skinTemp);
+bayesianEstimator(outsideTempMF.input(1).mf(2), outsideTemp);
+
+% Define the fuzzy inference system
+HVACPower = evalfis([skinTemp outsideTemp skinTempRate outsideTempRate],HVACPowerMF);
+
+
+
+
+
